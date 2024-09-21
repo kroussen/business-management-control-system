@@ -4,7 +4,12 @@ from types import TracebackType
 from typing import Any, Never
 
 from database.db import async_session_maker
-from repositories import UserRepository, CompanyRepository, InviteRepository, MemberRepository
+from repositories import (
+    UserRepository,
+    CompanyRepository,
+    InviteRepository,
+    PositionRepository
+)
 from utils.custom_types import AsyncFunc
 
 
@@ -46,7 +51,7 @@ class UnitOfWork(AbstractUnitOfWork):
         self.user = UserRepository(self.session)
         self.company = CompanyRepository(self.session)
         self.invite = InviteRepository(self.session)
-        self.member = MemberRepository(self.session)
+        self.position = PositionRepository(self.session)
 
     async def __aexit__(
             self,

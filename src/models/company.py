@@ -10,4 +10,5 @@ class CompanyModel(BaseModel):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
 
-    users: Mapped[list["UserModel"]] = relationship(secondary='member', back_populates='companies')
+    employees = relationship("UserModel", back_populates="company")
+    positions = relationship("PositionModel", back_populates="company")

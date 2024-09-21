@@ -2,12 +2,12 @@ __all__ = [
     'BaseModel',
     'UserModel',
     'CompanyModel',
-    'MemberModel'
-    'InviteModel'
+    'InviteModel',
+    'PositionModel'
 ]
 
 from models.base import BaseModel
 from models.user import UserModel
 from models.company import CompanyModel
-from models.member import MemberModel
 from models.invite import InviteModel
+from models.position import PositionModel

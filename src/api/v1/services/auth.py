@@ -12,29 +12,41 @@ from schemas.auth import (
     SignInRequestSchema,
     TokenInfoSchema
 )
-from utils.service import BaseService
-from utils.unit_of_work import transaction_mode
 from utils.auth.invite_token_utils import generate_invite_token
 from utils.auth.jwt_utils import encode_jwt, decode_jwt
 from utils.auth.password_utils import hash_password, validate_password
+from utils.exceptions import BadRequestException, UnauthorizedException, ForbiddenException
 from utils.mail.service import EmailService
+from utils.service import BaseService
+from utils.unit_of_work import transaction_mode
+
+# TODO удалить
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+# TODO удалить
 
 
 class AuthService(BaseService):
 
     @transaction_mode
     async def check_account(self, account: EmailStr) -> CheckAccountResponseSchema:
-        user = await self.uow.user.get_user_by_email_or_none(email=account)
+        user = await self.uow.user.get_by_query_one_or_none(email=account)
         if user:
-            self.rise_400_bad_request(message="Такой e-mail уже зарегистрирован")
+            raise BadRequestException(detail="Такой e-mail уже зарегистрирован")
 
         invite_token = generate_invite_token()
 
-        invite = await self.uow.invite.get_token_by_email_or_none(email=account)
+        invite = await self.uow.invite.get_by_query_one_or_none(email=account)
         if invite:
-            await self.uow.invite.update_invite_token(email=account, token=invite_token)
+            await self.uow.invite.update_one_by_id(obj_id=invite.id, email=account, token=invite_token)
         else:
-            await self.uow.invite.save_invite_token(email=account, token=invite_token)
+            await self.uow.invite.add_one(email=account, token=invite_token)
 
         email_service = EmailService()
         await email_service.send_invite_email(account, invite_token)
@@ -43,42 +55,47 @@ class AuthService(BaseService):
 
     @transaction_mode
     async def sign_up(self, schema: SignUpRequestSchema) -> SignUpResponseSchema:
-        invite = await self.uow.invite.get_token_by_email_or_none(email=schema.account)
+        invite = await self.uow.invite.get_by_query_one_or_none(email=schema.account)
 
         if invite is None:
-            self.rise_400_bad_request(message="Проверьте свой аккаунт")
+            raise BadRequestException(detail="Проверьте свой аккаунт")
 
         if invite.token != schema.token:
-            self.rise_400_bad_request(message="Неверный код подтверждения")
+            raise BadRequestException(detail="Неверный код подтверждения")
 
-        await self.uow.invite.verified_account(email=schema.account)
+        await self.uow.invite.update_one_by_id(obj_id=invite.id, is_verified=True)
         return SignUpResponseSchema(message="Аккаунт успешно подтвержден", account=schema.account)
 
     @transaction_mode
     async def sign_up_complete(self, schema: SignUpCompleteRequestSchema) -> SignUpCompleteResponseSchema:
-        user = await self.uow.user.get_user_by_email_or_none(email=schema.account)
+
+        user = await self.uow.user.get_by_query_one_or_none(email=schema.account)
         if user:
-            self.rise_400_bad_request(message="Такой пользователь уже зарегистрирован")
+            raise BadRequestException(detail="Такой пользователь уже зарегистрирован")
 
-        company = await self.uow.company.get_company_by_name_or_none(company_name=schema.company_name)
+        company = await self.uow.company.get_by_query_one_or_none(name=schema.company_name)
         if company:
-            self.rise_400_bad_request(message="Компания с таким именем уже существует")
+            raise BadRequestException(detail="Компания с таким именем уже существует")
 
-        invite = await self.uow.invite.get_token_by_email_or_none(email=schema.account)
+        invite = await self.uow.invite.get_by_query_one_or_none(email=schema.account)
         if not invite:
-            self.rise_400_bad_request(message="Подтвердите свой аккаунт"),
+            raise BadRequestException(detail="Проверьте свой аккаунт")
 
-        new_company = await self.uow.company.create_company_and_get_object(company_name=schema.company_name)
         hashed_password = hash_password(schema.password)
-        new_user = await self.uow.user.create_user_and_get_obj(
-            email=schema.account,
-            password=hashed_password,
-            first_name=schema.first_name,
-            last_name=schema.last_name,
-            is_admin=True,
-        )
+        new_company_id = await self.uow.company.add_one_and_get_id(name=schema.company_name)
+        new_position_id = await self.uow.position.add_one_and_get_id(name='Admin', company_id=new_company_id)
 
-        await self.uow.member.add_member(user_id=new_user.id, company_id=new_company.id)
+        new_user = {
+            'email': schema.account,
+            'first_name': schema.first_name,
+            'last_name': schema.last_name,
+            'hashed_password': hashed_password,
+            'is_admin': True,
+            'company_id': new_company_id,
+            'position_id': new_position_id
+        }
+
+        await self.uow.user.add_one(**new_user)
 
         return SignUpCompleteResponseSchema(
             account=schema.account,
@@ -104,24 +121,15 @@ class AuthService(BaseService):
 
     @transaction_mode
     async def _validate_auth_user(self, email: str, password: str):
-        user = await self.uow.user.get_user_by_email_or_none(email=email)
+        user = await self.uow.user.get_by_query_one_or_none(email=email)
 
         if not user:
-            self.rise_401_unauthorized(message="Неправильный e-mail или пароль")
+            raise UnauthorizedException(detail="Неправильный e-mail или пароль")
 
         if not validate_password(password=password, hashed_password=user.hashed_password):
-            self.rise_401_unauthorized(message="Неправильный e-mail или пароль")
+            raise UnauthorizedException(detail="Неправильный e-mail или пароль")
 
         if not user.is_active:
-            self.rise_403_forbidden(message="Аккаунт пользователя неактивный")
+            raise ForbiddenException(detail="Аккаунт пользователя неактивный")
 
         return user
-
-    def rise_400_bad_request(self, message):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
-
-    def rise_401_unauthorized(self, message):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=message)
-
-    def rise_403_forbidden(self, message):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=message)
