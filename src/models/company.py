@@ -12,3 +12,4 @@ class CompanyModel(BaseModel):
 
     employees = relationship("UserModel", back_populates="company")
     positions = relationship("PositionModel", back_populates="company")
+    departments = relationship('DepartmentModel', back_populates='company')

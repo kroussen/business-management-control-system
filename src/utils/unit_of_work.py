@@ -8,7 +8,8 @@ from repositories import (
     UserRepository,
     CompanyRepository,
     InviteRepository,
-    PositionRepository
+    PositionRepository,
+    DepartmentRepository
 )
 from utils.custom_types import AsyncFunc
 
@@ -52,6 +53,7 @@ class UnitOfWork(AbstractUnitOfWork):
         self.company = CompanyRepository(self.session)
         self.invite = InviteRepository(self.session)
         self.position = PositionRepository(self.session)
+        self.department = DepartmentRepository(self.session)
 
     async def __aexit__(
             self,

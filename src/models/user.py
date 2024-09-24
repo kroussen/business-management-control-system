@@ -16,6 +16,9 @@ class UserModel(BaseModel):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     company_id: Mapped[int] = mapped_column(Integer, ForeignKey('company.id'))
     position_id: Mapped[int] = mapped_column(Integer, ForeignKey('position.id'))
-
+    department_id: Mapped[int] = mapped_column(Integer, ForeignKey('department.id'), nullable=True)
     company = relationship("CompanyModel", back_populates="employees")
     position = relationship("PositionModel", back_populates="employees")
+    department = relationship("DepartmentModel",
+                              back_populates='employees',
+                              foreign_keys=[department_id])
