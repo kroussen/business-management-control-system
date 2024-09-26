@@ -11,6 +11,7 @@ from schemas.department import (
     DepartmentDeleteResponseSchema,
     AssignManagerResponseSchema
 )
+from schemas.auth import UserTokenSchema
 
 # TODO удалить
 import logging
@@ -26,10 +27,14 @@ logger = logging.getLogger(__name__)
 class DepartmentService(BaseService):
 
     @transaction_mode
-    async def create_department(self, schema: DepartmentCreateRequestSchema):
+    async def create_department(self, schema: DepartmentCreateRequestSchema, user_token_schema: UserTokenSchema):
         company = await self.uow.company.get_by_query_one_or_none(id=schema.company_id)
+
         if not company:
             raise BadRequestException(detail="Такой компании не существует")
+
+        if company.id != user_token_schema.company_id:
+            raise ForbiddenException(detail="Вы не являетесь администратором этой компании")
 
         if schema.parent_id == 0:
             schema.parent_id = None
@@ -45,10 +50,16 @@ class DepartmentService(BaseService):
         return await self.uow.department.add_one_and_get_obj(**data)
 
     @transaction_mode
-    async def update_department(self, department_id: int, schema: DepartmentUpdateRequestSchema):
+    async def update_department(self,
+                                department_id: int,
+                                schema: DepartmentUpdateRequestSchema,
+                                user_token_schema: UserTokenSchema):
         department = await self.uow.department.get_by_query_one_or_none(id=department_id)
         if not department:
             raise BadRequestException(detail="Такого отдела не существует")
+
+        if department.company_id != user_token_schema.company_id:
+            raise ForbiddenException(detail="Вы не являетесь администратором этой компании")
 
         if schema.parent_id == 0:
             schema.parent_id = department.parent_id
@@ -63,10 +74,13 @@ class DepartmentService(BaseService):
         return await self.uow.department.get_by_query_one_or_none(id=new_department.id)
 
     @transaction_mode
-    async def delete_department(self, department_id: int):
+    async def delete_department(self, department_id: int, user_token_schema: UserTokenSchema):
         department = await self.uow.department.get_by_query_one_or_none(id=department_id)
         if not department:
             raise BadRequestException(detail="Такого отдела не существует")
+
+        if department.company_id != user_token_schema.company_id:
+            raise ForbiddenException(detail="Вы не являетесь администратором этой компании")
 
         all_children_departments = await self.uow.department.get_by_query_all(parent_id=department_id)
         if all_children_departments:
@@ -77,10 +91,16 @@ class DepartmentService(BaseService):
         return DepartmentDeleteResponseSchema(message="Отдел успешно удален")
 
     @transaction_mode
-    async def assign_manager(self, department_id: int, schema: AssignManagerRequestSchema):
+    async def assign_manager(self,
+                             department_id: int,
+                             schema: AssignManagerRequestSchema,
+                             user_token_schema: UserTokenSchema) -> AssignManagerResponseSchema:
         department = await self.uow.department.get_by_query_one_or_none(id=department_id)
         if not department:
             raise BadRequestException(detail="Такого отдела не существует")
+
+        if department.company_id != user_token_schema.company_id:
+            raise ForbiddenException(detail="Вы не являетесь администратором этой компании")
 
         user = await self.uow.user.get_by_query_one_or_none(id=schema.manager_id)
         if not user:

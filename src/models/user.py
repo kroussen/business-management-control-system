@@ -11,7 +11,7 @@ class UserModel(BaseModel):
     email: Mapped[str] = mapped_column(String, unique=True)
     first_name: Mapped[str] = mapped_column(String)
     last_name: Mapped[str] = mapped_column(String)
-    hashed_password: Mapped[str] = mapped_column(String)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     company_id: Mapped[int] = mapped_column(Integer, ForeignKey('company.id'))

@@ -19,3 +19,8 @@ class UnauthorizedException(BaseHTTPException):
 class ForbiddenException(BaseHTTPException):
     def __init__(self, detail: str):
         super().__init__(status_code=403, detail=detail)
+
+
+class NotFoundException(BaseHTTPException):
+    def __init__(self, detail: str):
+        super().__init__(status_code=404, detail=detail)

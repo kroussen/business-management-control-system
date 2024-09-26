@@ -26,3 +26,10 @@ class EmailService:
     async def send_invite_email(self, email: EmailStr, token: str):
         html = f"""Код для подтверждения E-mail: {token}"""
         await self.send_email("Код подтверждения", email, html)
+
+    async def send_invite_employee(self, email: EmailStr, invite_url: str):
+        html = f"""
+                <br>Email: {email}
+                <br>Url: {invite_url}
+                """
+        await self.send_email("Пригласительная ссылка", email, html)

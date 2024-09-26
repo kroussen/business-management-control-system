@@ -29,6 +29,8 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+
 # TODO удалить
 
 
@@ -43,6 +45,10 @@ class AuthService(BaseService):
         invite_token = generate_invite_token()
 
         invite = await self.uow.invite.get_by_query_one_or_none(email=account)
+
+        if invite.is_verified:
+            raise BadRequestException(detail="Ваш аккаунт уже подтвержден")
+
         if invite:
             await self.uow.invite.update_one_by_id(obj_id=invite.id, email=account, token=invite_token)
         else:
@@ -112,8 +118,9 @@ class AuthService(BaseService):
         current_time = datetime.now(timezone.utc)
         jwt_payload = {
             "sub": str(user.id),
-            "email": user.email,
+            "company_id": user.company_id,
             "is_admin": user.is_admin,
+            "is_active": user.is_active,
             "iat": int(current_time.timestamp()),
         }
         token = encode_jwt(jwt_payload)

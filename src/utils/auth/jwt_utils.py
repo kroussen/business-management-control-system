@@ -22,7 +22,6 @@ def encode_jwt(
         exp=expire,
         iat=now,
     )
-
     encoded = jwt.encode(
         to_encode,
         private_key,

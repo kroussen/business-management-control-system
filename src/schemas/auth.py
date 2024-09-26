@@ -40,3 +40,9 @@ class SignInRequestSchema(BaseModel):
 class TokenInfoSchema(BaseModel):
     access_token: str
     token_type: str
+
+
+class UserTokenSchema(BaseModel):
+    user_id: int
+    company_id: int
+    is_admin: bool

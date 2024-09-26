@@ -9,7 +9,10 @@ from repositories import (
     CompanyRepository,
     InviteRepository,
     PositionRepository,
-    DepartmentRepository
+    DepartmentRepository,
+    TaskRepository,
+    TaskWatcherRepository,
+    TaskExecutorRepository
 )
 from utils.custom_types import AsyncFunc
 
@@ -54,6 +57,9 @@ class UnitOfWork(AbstractUnitOfWork):
         self.invite = InviteRepository(self.session)
         self.position = PositionRepository(self.session)
         self.department = DepartmentRepository(self.session)
+        self.task = TaskRepository(self.session)
+        self.task_watcher = TaskWatcherRepository(self.session)
+        self.task_executor = TaskExecutorRepository(self.session)
 
     async def __aexit__(
             self,
