@@ -10,7 +10,7 @@ class DepartmentCreateRequestSchema(BaseModel):
 
 class DepartmentUpdateRequestSchema(BaseModel):
     name: Optional[str] = None
-    parent_id: Optional[int] = None
+    parent_id: int | None = None
 
 
 class AssignManagerRequestSchema(BaseModel):

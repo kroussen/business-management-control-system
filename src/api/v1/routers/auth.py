@@ -26,8 +26,9 @@ async def sign_up(schema: SignUpRequestSchema, service: AuthService = Depends())
 
 
 @router.post("/sign-up-complete", response_model=SignUpCompleteResponseSchema)
-async def sign_up_complete(schema: SignUpCompleteRequestSchema,
-                           service: AuthService = Depends()) -> SignUpCompleteResponseSchema:
+async def sign_up_complete(
+        schema: SignUpCompleteRequestSchema,
+        service: AuthService = Depends()) -> SignUpCompleteResponseSchema:
     return await service.sign_up_complete(schema=schema)
 
 

@@ -46,13 +46,12 @@ class AuthService(BaseService):
 
         invite = await self.uow.invite.get_by_query_one_or_none(email=account)
 
-        if invite.is_verified:
-            raise BadRequestException(detail="Ваш аккаунт уже подтвержден")
-
-        if invite:
+        if not invite:
+            await self.uow.invite.add_one(email=account, token=invite_token)
+        elif not invite.is_verified:
             await self.uow.invite.update_one_by_id(obj_id=invite.id, email=account, token=invite_token)
         else:
-            await self.uow.invite.add_one(email=account, token=invite_token)
+            raise BadRequestException(detail="Ваш аккаунт уже подтвержден")
 
         email_service = EmailService()
         await email_service.send_invite_email(account, invite_token)
@@ -91,6 +90,7 @@ class AuthService(BaseService):
         new_company_id = await self.uow.company.add_one_and_get_id(name=schema.company_name)
         new_position_id = await self.uow.position.add_one_and_get_id(name='Admin', company_id=new_company_id)
 
+        # TODO ...
         new_user = {
             'email': schema.account,
             'first_name': schema.first_name,
